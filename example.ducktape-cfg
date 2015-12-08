@@ -1,0 +1,5 @@
+; ini format
+s3_access_key =
+s3_secret_key =
+s3_bucket =
+heroku_token =
