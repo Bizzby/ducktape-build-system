@@ -38,7 +38,8 @@ ducktape-build-system expects to find the `.ducktape-cfg` in your CWD when you r
 
 `ducktape-build-system $ARGS`
 
-Takes 3 args
+Takes 3 args:
+
 1. git repo to build from (you must have read access on whichever machine this is running on)
 2. commit/ref/branch/tag to build
 3. heroku app to use for the build
@@ -48,7 +49,7 @@ e.g
 ```
 ducktape-build-system "git@github.com:Bizzby/bizzby.git" "f96daa84613d3a6d1c73d2214fc948b711d9bd7b" bizzby-slugbuilder-test
 ## of if cloning the repo...
-node bin/index.js "git@github.com:Bizzby/bizzby.git" "f96daa84613d3a6d1c73d2214fc948b711d9bd7b" bizzby-slugbuilder-test
+./bin/cli "git@github.com:Bizzby/bizzby.git" "f96daa84613d3a6d1c73d2214fc948b711d9bd7b" bizzby-slugbuilder-test
 ```
 
 Example output
@@ -59,10 +60,10 @@ checking out desired ref
 getting full commit hash
 tar-ing up into an archive
 creating source
-uploading source to https://s3-external-1.amazonaws.com/heroku-sources-production/heroku.com/ef21ed18-f931-4341-929c-b8ef26ca2c62?AWSAccessKeyId=AKIAJURUZ6XB34ESX54A&Signature=dbTRsWJtYSIjwLDN9OEM3iBI4uk%3D&Expires=1449587344
+uploading source to https://s3-external-1.amazonaws.com/heroku-sources-production/heroku.com/ef21ed18-f931-4341-929c-b8ef26ca2c62?AWSAccessKeyId=AKIAJURUZ6XB34ESX54A&Signature=dbTRsWJtYSIjwYDN9OEM3iBI4uk%3D&Expires=1449587344
 creating build
 watching build 07dbb7b0-adde-496e-a168-006c4cdaa431
-heroku build log: https://build-output.heroku.com/streams/f5/f5130098-8065-4fc7-9633-5168d01787e3/logs/07/07dbb7b0-adde-496e-a168-006c4cdaa431.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJQUUZPBDLMDG7K7Q%2F20151208%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20151208T140912Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=b14f2196f8f4ab72fcb17c70c0492f6f6aabdc950ca690f49727a3771f8691ca
+heroku build log: https://build-output.heroku.com/streams/f5/f5130098-8065-4fc7-9633-5168d01787e3/logs/07/07dbb7b0-adde-496e-a168-006c4cdaa431.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJQUUZPBDLMDG7K7Q%2F20151208%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20151208T140912Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=b14f2196f8f4ab72fcb17c70c0492f6f6aabac950ca690f49727a3771f8691ca
 status:pending
 status:pending
 status:pending
@@ -76,10 +77,11 @@ build completed
 slug: heroku-builds/bizzby-slugbuilder-test/8444425d3f44114fddc2884a2dc75aa874aed630.tar.gz
 ```
 
-Each run is stateless, but as there is no locking etc, running multiple builds at the some time in the same directory will cause a mess. However running multiple builds concurrently in different folders, or on different machines will probably be ok (although it may have some interesting effects on heroku's build cache)
+Each run is stateless, but as there is no locking etc, running multiple builds at the some time in the same directory will cause a mess. However running multiple builds concurrently in different folders, or on different machines will probably be ok (although it may have some interesting effects on heroku's build cache).
 
-If you don't 
-The script can be run from anywhere, not just where-ever you install this repo
+The architecture of the machine this runs on is pretty irelevant although it's untested on windows. This script just orchestrates a bunch of HTTP calls and bounces some tarballs around.
+
+If you don't install via `npm`, the script can be run from anywhere, not just where-ever you install this repo
 e.g
 
 ```
