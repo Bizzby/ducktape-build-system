@@ -2,7 +2,6 @@
  * Args: repo, commit, heroku-app
  */
 
-var child_process = require('child_process');
 var fs = require('fs');
 var path = require('path');
 var async = require('async');
@@ -12,6 +11,8 @@ var request = require('request');
 var AWS = require('aws-sdk');
 
 var config = require('./lib/config')
+var spawnSync = require('./lib/procSpawn')
+
 /**
  * START: Things to move out to configuration
  */
@@ -52,64 +53,30 @@ rimraf.sync(WORKSPACE_DIR)
 // clone the repository
 console.log('cloning the repo')
 var gitCloneArgs = ['clone', repo, '--depth', DEFAULT_GIT_CLONE_DEPTH, WORKSPACE_DIR]
-var cloneProc = child_process.spawnSync('git', gitCloneArgs, {cwd: process.cwd()})
+var cloneProc = spawnSync('git', gitCloneArgs, {cwd: process.cwd()})
 
-if (cloneProc.status !== 0) {
-    console.log('git cloning the repo exited with code ' + cloneProc.status)
-    process.exit(1)
-}
-
-if (cloneProc.error) {
-    console.log('"git cloning the repo" process failed', cloneProc.error)
-    process.exit(1)
-}
 
 // checkout the desired commit
 console.log('checking out desired ref')
 var gitCheckoutArgs = ['checkout', gitRef];
-var checkoutProc = child_process.spawnSync('git', gitCheckoutArgs, {cwd: WORKSPACE_DIR})
-
-if (checkoutProc.status !== 0) {
-    console.log('git cloning the repo exited with code ' + checkoutProc.status)
-    process.exit(1)
-}
-
-if (checkoutProc.error) {
-    console.log('"git cloning the repo" process failed', checkoutProc.error)
-    process.exit(1)
-}
+var checkoutProc = spawnSync('git', gitCheckoutArgs, {cwd: WORKSPACE_DIR})
 
 //grab the actually commit ref
 console.log('getting full commit hash')
 var gitRevParseArgs = ['rev-parse', 'HEAD'];
-var revParseProc = child_process.spawnSync('git', gitRevParseArgs, {cwd: WORKSPACE_DIR})
+var revParseProc = spawnSync('git', gitRevParseArgs, {cwd: WORKSPACE_DIR})
 
-if (revParseProc.status !== 0) {
-    console.log('git rev-parsing exited with code ' + checkoutProc.status)
-    process.exit(1)
-}
-
-if (revParseProc.error) {
-    console.log('"git rev-parsing" process failed', checkoutProc.error)
-    process.exit(1)
-}
 // TODO: probably error prone
 commit = revParseProc.stdout.toString().trim()
+
+if (gitRef !== commit) {
+    console.log('converted git reference %s into %s', gitRef, commit)
+}
 
 // tarup the folder - heroku requires there be no containing folder in the tarball
 console.log('tar-ing up into an archive')
 var tarArgs = ['-zcf', DEFAULT_SOURCE_TARBALL_NAME, '--exclude', '.git', '.']
-var tarProc = child_process.spawnSync('tar', tarArgs, {cwd: WORKSPACE_DIR})
-
-if (checkoutProc.status !== 0) {
-    console.log('git cloning the repo exited with code ' + checkoutProc.status)
-    process.exit(1)
-}
-
-if (checkoutProc.error) {
-    console.log('"git cloning the repo" process failed', checkoutProc.error)
-    process.exit(1)
-}
+var tarProc = spawnSync('tar', tarArgs, {cwd: WORKSPACE_DIR})
 
 //start all the heroku crap
 
@@ -143,40 +110,37 @@ var watchBuild = function(cb, res) {
     console.log('watching build ' + res.create_build.id)
     console.log('heroku build log: ' + res.create_build.output_stream_url )
     var build_id = res.create_build.id;
-    var wait = 5000;
 
-    var buildStatus;
-    var slug; //for some reason whilst/until are not passing through optional args properly
+    // Pipe build output
+    request.get(res.create_build.output_stream_url)
+    .on('end', function(){
+        check()
+    }).on('error', function(){
+        console.log('error whilst streaming build log')
+        cb(err)
+    }).pipe(process.stdout)
 
-    var checkBuild = function (whilstCallback){
+    function check(){
+        heroku.apps(herokuApp).builds(build_id).info(function(err, result){
+            if(err){
+                //TODO: maybe some errors can be ignored and processing can continue
+                return cb(err)
+            }
 
-        setTimeout(check, wait);
-        function check(){
-            heroku.apps(herokuApp).builds(build_id).info(function(err, result){
-                if(err){
-                    //TODO: maybe some errors can be ignored and processing can continue
-                    return whilstCallback(err)
-                }
+            console.log('build status:' + result.status)
 
-                console.log('status:' + result.status)
+            if(result.status == 'failed') {
+                return cb( new Error('build failed'))
+            }
 
-                if(result.status == 'failed') {
-                    return whilstCallback( new Error('build failed'))
-                }
+            if(result.status == 'succeeded') {
+                return cb(null, result.slug)
+            }
 
-                buildStatus = result.status;
-                slug = result.slug;
-
-                whilstCallback()
-            })
-        }
+            cb(new Error('Build resolved to unexpected status %s', result.status))
+        })
     }
 
-    async.until(
-        function () { return buildStatus == 'succeeded' || buildStatus == 'failed'; },
-        checkBuild,
-        function(err){cb(err, slug)}
-        )
 }
 
 var getSlug = function(cb, res){
