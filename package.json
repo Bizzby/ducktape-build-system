@@ -1,6 +1,6 @@
 {
   "name": "ducktape-build-system",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "makes builds via heroku build servers",
   "bin": "./bin/cli",
   "main": "./index.js",
