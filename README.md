@@ -21,7 +21,7 @@ or
 2. `cd` into the newly created repo folder
 3. `npm install`
 
-(tested on 0.10.x, may work on 4.x.x too)
+(works on nodejs 4+ too)
 
 ### configuration
 copy the example config and change/fill in the values
@@ -44,6 +44,12 @@ Takes 3 args:
 2. commit/ref/branch/tag to build
 3. heroku app to use for the build
 
+and one optional longopt
+
+1. `--branch=<BRANCH>`: if trying to build a ref from a non-master/default branch you must specify this otherwise ducktape won't be able to find the reference.
+
+_note to self: maybe we could something smart with `git ls-remote` to automate this_
+
 e.g
 
 ```
@@ -51,6 +57,8 @@ ducktape-build-system "git@github.com:Bizzby/bizzby.git" "f96daa84613d3a6d1c73d2
 ## of if cloning the repo...
 ./bin/cli "git@github.com:Bizzby/bizzby.git" "f96daa84613d3a6d1c73d2214fc948b711d9bd7b" bizzby-slugbuilder-test
 ```
+
+
 
 Example output
 ```
