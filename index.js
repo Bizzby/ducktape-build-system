@@ -19,6 +19,7 @@ const spawnSync = require('./lib/procSpawn')
  * START: Things to move out to configuration
  */
 const WORKSPACE_DIR = path.join( process.cwd(), config.workspace_dirname);
+const SOURCE_DIR = path.join(WORKSPACE_DIR, config.repository_dirname)
 const HEROKU_TOKEN = config.heroku_token;
 const DEST_S3_CONF = {
   accessKeyId: config.s3_access_key,
@@ -53,25 +54,28 @@ const destS3 = new AWS.S3(destS3Conf);
 console.log('clearing up any old workspace stuff')
 rimraf.sync(WORKSPACE_DIR)
 
+console.log('creating workspace')
+fs.mkdirSync(WORKSPACE_DIR)
+
 // clone the repository
 console.log('cloning the repo')
 const gitCloneArgs = ['clone', repo, '--depth', DEFAULT_GIT_CLONE_DEPTH]
 if(branch) {
     gitCloneArgs.push('--branch', branch)
 }
-gitCloneArgs.push(WORKSPACE_DIR)
+gitCloneArgs.push(SOURCE_DIR)
 const cloneProc = spawnSync('git', gitCloneArgs, {cwd: process.cwd()})
 
 
 // checkout the desired commit
 console.log('checking out desired ref')
 const gitCheckoutArgs = ['checkout', gitRef];
-const checkoutProc = spawnSync('git', gitCheckoutArgs, {cwd: WORKSPACE_DIR})
+const checkoutProc = spawnSync('git', gitCheckoutArgs, {cwd: SOURCE_DIR})
 
 //grab the actually commit ref
 console.log('getting full commit hash')
 const gitRevParseArgs = ['rev-parse', 'HEAD'];
-const revParseProc = spawnSync('git', gitRevParseArgs, {cwd: WORKSPACE_DIR})
+const revParseProc = spawnSync('git', gitRevParseArgs, {cwd: SOURCE_DIR})
 
 // TODO: probably error prone
 commit = revParseProc.stdout.toString().trim()
@@ -82,7 +86,7 @@ if (gitRef !== commit) {
 
 // tarup the folder - heroku requires there be no containing folder in the tarball
 console.log('tar-ing up into an archive')
-const tarArgs = ['-zcf', DEFAULT_SOURCE_TARBALL_NAME, '--exclude', '.git', '.']
+const tarArgs = ['-zcf', DEFAULT_SOURCE_TARBALL_NAME, '-C', SOURCE_DIR,'--exclude', '.git', '.']
 const tarProc = spawnSync('tar', tarArgs, {cwd: WORKSPACE_DIR})
 
 //start all the heroku crap
