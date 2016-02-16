@@ -12,8 +12,18 @@ const request = require('request');
 const AWS = require('aws-sdk');
 const argv = require('yargs').argv 
 
-const config = require('./lib/config')
+const configLoader = require('./lib/config')
 const spawnSync = require('./lib/procSpawn')
+
+/**
+ * Attempt to load config file
+ */
+const DEFAULT_CONFIG_FILENAME = '.ducktape-cfg'
+const DEFAULT_LOCATION = process.cwd();
+const DEFAULT_CONFIG_PATH = path.join(DEFAULT_LOCATION, DEFAULT_CONFIG_FILENAME)
+
+const configFile = argv.c || argv.config || DEFAULT_CONFIG_PATH
+const config = configLoader(configFile)
 
 /**
  * START: Things to move out to configuration
@@ -35,9 +45,9 @@ const DEFAULT_TEMP_LOCAL_SLUG_NAME = config.local_slug_name
  * END: Things to move out to configuration
  */
 
-const repo = argv._[0]
-const gitRef = argv._[1]
-const herokuApp = argv._[2]
+const repo = argv.repo ||  argv._[0]
+const gitRef = argv.commit || argv._[1]
+const herokuApp = argv.app || argv._[2]
 const branch = argv.branch || null
 
 // We'll overwrite this later if gitRef is branch/tag/etc

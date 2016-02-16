@@ -32,23 +32,30 @@ cp example.ducktape-cfg ~/somewhere/.ducktape-cfg
 The script needs S3 credentials for wherever it's going to store the slug and an Heroku token for using 
 the heroku app
 
-ducktape-build-system expects to find the `.ducktape-cfg` in your CWD when you run the script
+ducktape-build-system by default expects to find the `.ducktape-cfg` in your CWD when you run the script,
+you can set the location of the config file by supplying `--config PATH_TO_FILE`  where path to file is 
+either relative to you current directory or an absolute path
 
 ### Running
 
 `ducktape-build-system $ARGS`
 
-Takes 3 args:
+Takes 3 args (in positional order) (with long-opts in brackets):
 
-1. git repo to build from (you must have read access on whichever machine this is running on)
-2. commit/ref/branch/tag to build
-3. heroku app to use for the build
+1. [--repo] git repo to build from (you must have read access on whichever machine this is running on)
+2. [--commit] commit/ref/branch/tag to build
+3. [--app] heroku app to use for the build
 
-and one optional longopt
+these can either be supplied positionally (old way), or they can be suppplied as long-opts (preferred)
+
+
+and two optional longopts
 
 1. `--branch=<BRANCH>`: if trying to build a ref from a non-master/default branch you must specify this otherwise ducktape won't be able to find the reference.
+2. `--config <config-file>`: a path to a config file to use
 
-_note to self: maybe we could something smart with `git ls-remote` to automate this_
+_note to self: maybe we could something smart with `git ls-remote` to automate 1_
+
 
 e.g
 
@@ -72,10 +79,7 @@ uploading source to https://s3-external-1.amazonaws.com/heroku-sources-productio
 creating build
 watching build 07dbb7b0-adde-496e-a168-006c4cdaa431
 heroku build log: https://build-output.heroku.com/streams/f5/f5130098-8065-4fc7-9633-5168d01787e3/logs/07/07dbb7b0-adde-496e-a168-006c4cdaa431.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJQUUZPBDLMDG7K7Q%2F20151208%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20151208T140912Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=b14f2196f8f4ab72fcb17c70c0492f6f6aabac950ca690f49727a3771f8691ca
-status:pending
-status:pending
-status:pending
-status:pending
+#... HEROKU BUILD SERVER OUTPUT...
 status:succeeded
 getting slug info
 copying slug down from heroku S3
