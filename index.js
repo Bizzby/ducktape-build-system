@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const async = require('async');
 const rimraf = require('rimraf');
+const mkdirp = require('mkdirp');
 const Heroku = require('heroku-client');
 const request = require('request');
 const AWS = require('aws-sdk');
@@ -19,8 +20,8 @@ const spawnSync = require('./lib/procSpawn')
  * Attempt to load config file
  */
 const DEFAULT_CONFIG_FILENAME = '.ducktape-cfg'
-const DEFAULT_LOCATION = process.cwd();
-const DEFAULT_CONFIG_PATH = path.join(DEFAULT_LOCATION, DEFAULT_CONFIG_FILENAME)
+const DEFAULT_CONFIG_LOCATION = process.cwd();
+const DEFAULT_CONFIG_PATH = path.join(DEFAULT_CONFIG_LOCATION, DEFAULT_CONFIG_FILENAME)
 
 const configFile = argv.c || argv.config || DEFAULT_CONFIG_PATH
 const config = configLoader(configFile)
@@ -28,7 +29,7 @@ const config = configLoader(configFile)
 /**
  * START: Things to move out to configuration
  */
-const WORKSPACE_DIR = path.join( process.cwd(), config.workspace_dirname);
+const WORKSPACE_DIR = argv['build-dir'] || path.join( process.cwd(), config.workspace_dirname);
 const SOURCE_DIR = path.join(WORKSPACE_DIR, config.repository_dirname)
 const HEROKU_TOKEN = config.heroku_token;
 const DEST_S3_CONF = {
@@ -41,6 +42,8 @@ const DEFAULT_GIT_CLONE_DEPTH = config.git_clone_depth
 const DEFAULT_SOURCE_TARBALL_NAME = config.source_tarball_name
 const DEFAULT_TEMP_LOCAL_SLUG_NAME = config.local_slug_name
 
+const TEMP_LOCAL_SLUG_PATH = path.join(WORKSPACE_DIR, DEFAULT_TEMP_LOCAL_SLUG_NAME)
+const DEFAULT_SOURCE_TARBALL_PATH = path.join(WORKSPACE_DIR, DEFAULT_SOURCE_TARBALL_NAME)
 /**
  * END: Things to move out to configuration
  */
@@ -60,12 +63,21 @@ const destS3Conf = new AWS.Config(DEST_S3_CONF);
 const destS3 = new AWS.S3(destS3Conf);
 
 
-// dangerously clear up the workspace
-console.log('clearing up any old workspace stuff')
-rimraf.sync(WORKSPACE_DIR)
 
-console.log('creating workspace')
-fs.mkdirSync(WORKSPACE_DIR)
+// incase it doesn't exist, lets try to make it
+
+console.log('creating workspace if not already existing: %s', WORKSPACE_DIR)
+mkdirp.sync(WORKSPACE_DIR)
+
+// dangerously clear up the source dirs etc
+console.log('removing any pre-existing source dir: %s', SOURCE_DIR)
+rimraf.sync(SOURCE_DIR)
+
+console.log('removing any pre-existing source tarballs: %s', DEFAULT_SOURCE_TARBALL_PATH)
+rimraf.sync(DEFAULT_SOURCE_TARBALL_PATH)
+
+console.log('removing any pre-existing slugs: %s', TEMP_LOCAL_SLUG_PATH)
+rimraf.sync(TEMP_LOCAL_SLUG_PATH)
 
 // clone the repository
 console.log('cloning the repo')
@@ -111,7 +123,7 @@ const createSource = function(cb, res) {
 const uploadSource = function(cb, res) {
     console.log('uploading source to ' + res.create_source.source_blob.put_url )
     const url = res.create_source.source_blob.put_url;
-    request.put({url:url, body: fs.readFileSync(WORKSPACE_DIR+'/'+DEFAULT_SOURCE_TARBALL_NAME)}, function(err, httpResponse, body){
+    request.put({url:url, body: fs.readFileSync(DEFAULT_SOURCE_TARBALL_PATH)}, function(err, httpResponse, body){
         cb(err)
     })
 }
@@ -170,8 +182,8 @@ const getSlug = function(cb, res){
 }
 
 const downloadSlug = function(cb, res) {
-    console.log('copying slug down from heroku S3');
-    const tmpFileWriteStream = fs.createWriteStream(WORKSPACE_DIR+'/'+DEFAULT_TEMP_LOCAL_SLUG_NAME)
+    console.log('copying slug down from heroku S3 to %s', TEMP_LOCAL_SLUG_PATH);
+    const tmpFileWriteStream = fs.createWriteStream(TEMP_LOCAL_SLUG_PATH)
 
     request.get(res.get_slug.blob.url)
     .on('error', function(err){
@@ -194,9 +206,9 @@ const downloadSlug = function(cb, res) {
 }
 
 const uploadSlug = function(cb, res){
-    console.log('copying slug up to our S3');
+    console.log('copying slug up to our S3 from %s', TEMP_LOCAL_SLUG_PATH);
 
-    const tmpFileReadStream = fs.createReadStream(WORKSPACE_DIR+'/'+DEFAULT_TEMP_LOCAL_SLUG_NAME)
+    const tmpFileReadStream = fs.createReadStream(TEMP_LOCAL_SLUG_PATH)
     const uploadPath = 'heroku-builds/' + herokuApp + '/' + commit + '.tar.gz';
 
     destS3.putObject({

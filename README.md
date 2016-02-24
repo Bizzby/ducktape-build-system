@@ -49,11 +49,11 @@ Takes 3 args (in positional order) (with long-opts in brackets):
 these can either be supplied positionally (old way), or they can be suppplied as long-opts (preferred)
 
 
-and two optional longopts
+and three optional longopts
 
 1. `--branch=<BRANCH>`: if trying to build a ref from a non-master/default branch you must specify this otherwise ducktape won't be able to find the reference.
 2. `--config <config-file>`: a path to a config file to use
-
+3. `--build-dir <directory>`: a path to directory where all the build activities will happen. If it doesn't exist it will be created by the script
 _note to self: maybe we could something smart with `git ls-remote` to automate 1_
 
 
