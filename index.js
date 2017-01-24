@@ -146,7 +146,7 @@ const watchBuild = function (cb, res) {
   request.get(res.create_build.output_stream_url)
     .on('end', function () {
       waitUntil()
-        .interval(2000)
+        .interval(5000)
         .times(30)
         .condition(check(buildId))
         .done(function (result) {
